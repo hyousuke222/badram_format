@@ -1,6 +1,6 @@
-# Memtest86+ BadRAM Converter
+# Memtest86+ BadRAM Formatter
 
-A lightweight, zero-dependency Python script that parses **Memtest86+** bad memory outputs and converts them into formats compatible with **Windows (`bcdedit`)** and **GRUB (`badram`)**.
+A lightweight, zero-dependency Python script that parses **[Memtest86+](https://www.memtest.org/)** bad memory outputs and converts them into formats compatible with **Windows (`bcdedit`)** and **GRUB (`badram`)**.
 
 It automatically expands bad memory regions into 4KB Page Frame Numbers (PFNs), merges adjacent pages into minimal address/mask entries for GRUB.
 
@@ -118,3 +118,9 @@ By passing your installed RAM capacity (e.g., `-m 16G`), the script clips mask b
 ## License
 
 This project is open-source and available under the [MIT License](LICENSE).
+
+---
+
+## See also
+* https://memtest.org/readme#badram-patterns
+* [[tutorial] BadRAM 2025 update](https://forums.gentoo.org/viewtopic.php?t=1172918)

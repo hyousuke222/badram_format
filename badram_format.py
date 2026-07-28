@@ -55,6 +55,50 @@ def expand_pfns(addr, mask):
     return pfns
 
 
+def merge_badram_entries(pfns):
+    """Merge contiguous/pattern-matched PFN entries into minimal GRUB badram (addr, mask) pairs."""
+    # 4KB ページ単位 (マスク 0xfffffffffffff000) からスタート
+    entries = set((pfn << 12, 0xFFFFFFFFFFFFF000) for pfn in pfns)
+
+    while True:
+        merged_any = False
+        next_entries = set()
+
+        # マスクごとにグループ化して比較処理を高速化
+        by_mask = {}
+        for addr, mask in entries:
+            by_mask.setdefault(mask, []).append(addr)
+
+        for mask, addrs in by_mask.items():
+            addrs.sort()
+            used = [False] * len(addrs)
+
+            for i in range(len(addrs)):
+                if used[i]:
+                    continue
+                for j in range(i + 1, len(addrs)):
+                    if used[j]:
+                        continue
+                    diff = addrs[i] ^ addrs[j]
+                    # 差分が 1 ビットかつ、そのビットがマスク上で有効 (1) ならマージ可能
+                    if diff != 0 and (diff & (diff - 1)) == 0 and (diff & mask) == diff:
+                        new_addr = addrs[i] & ~diff
+                        new_mask = mask & ~diff
+                        next_entries.add((new_addr, new_mask))
+                        used[i] = True
+                        used[j] = True
+                        merged_any = True
+                        break
+                if not used[i]:
+                    next_entries.add((addrs[i], mask))
+
+        entries = next_entries
+        if not merged_any:
+            break
+
+    return sorted(entries)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Memtest86+ badram pattern to Windows badmemorylist or GRUB badram."
@@ -91,9 +135,8 @@ def main():
 
     # Print GRUB configuration if --grub option is set
     if args.grub:
-        # Each PFN (4KB page) corresponds to address `pfn << 12`
-        # and mask `0xfffffffffffff000` (matches exact 4KB page)
-        grub_pairs = [f"0x{pfn << 12:x},0xfffffffffffff000" for pfn in sorted_pfns]
+        merged_entries = merge_badram_entries(sorted_pfns)
+        grub_pairs = [f"0x{addr:x},0x{mask:x}\n" for addr, mask in merged_entries]
         grub_str = ",".join(grub_pairs)
 
         print("\n=== GRUB badram Command ===")

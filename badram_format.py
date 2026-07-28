@@ -118,6 +118,12 @@ def main():
         description="Convert Memtest86+ badram pattern to Windows badmemorylist or GRUB badram."
     )
     parser.add_argument(
+        "-o",
+        "--oneline",
+        action="store_true",
+        help="Output commands on a single line without backslashes",
+    )
+    parser.add_argument(
         "--grub",
         action="store_true",
         help="Output GRUB badram configuration and command",
@@ -151,7 +157,12 @@ def main():
 
     # Print Windows bcdedit command
     print("\n=== Windows bcdedit Command ===")
-    print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
+    if not args.oneline and hex_pfns:
+        chunks = [" ".join(hex_pfns[i : i + 4]) for i in range(0, len(hex_pfns), 4)]
+        formatted_list = " \\\n".join(chunks)
+        print(f"bcdedit /set {{badmemory}} badmemorylist {formatted_list}")
+    else:
+        print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
 
     # Print GRUB command if --grub option is set
     if args.grub:
@@ -172,10 +183,13 @@ def main():
                 mask &= max_mask
             grub_pairs.append(f"0x{addr:x},0x{mask:x}")
 
-        grub_str = ",".join(grub_pairs)
-
         print("\n=== GRUB badram Command ===")
-        print(f"badram {grub_str}")
+        if not args.oneline and grub_pairs:
+            grub_str = ", \\\n".join(grub_pairs)
+            print(f"badram {grub_str}")
+        else:
+            grub_str = ",".join(grub_pairs)
+            print(f"badram {grub_str}")
 
 
 if __name__ == "__main__":

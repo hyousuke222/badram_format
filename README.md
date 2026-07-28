@@ -25,7 +25,8 @@ It automatically expands bad memory regions into 4KB Page Frame Numbers (PFNs), 
 ## Usage
 
 Pass your Memtest86+ output badram pattern directly to the script via standard input (`stdin`).
-During the test, press <F1><F4><F4> to set output mode to "badram patterns" and <F10><F10> to resume the test.
+
+During the test, press `<F1><F4><F4>` to set output mode to "badram patterns" and `<F10><F10>` to resume the test.
 
 ### Basic Syntax
 
@@ -36,7 +37,7 @@ cat memtest_log.txt | python3 badram_format.py [OPTIONS]
 Or paste directly using an echo pipe:
 
 ```bash
-echo "0x62d60000 0xfffffffffffff000 0x62d61000 0xfffffffffffff000" | python3 badram_format.py
+echo "0x62d60310 0xffffffffffffc310 0x62d65040,0xffffffffffffd1c8" | python3 badram_format.py
 ```
 
 ---

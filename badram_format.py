@@ -118,6 +118,13 @@ def main():
         description="Convert Memtest86+ badram pattern to Windows badmemorylist and GRUB badram."
     )
     parser.add_argument(
+        "file",
+        nargs="?",
+        type=argparse.FileType("r"),
+        default=sys.stdin,
+        help="Input file containing Memtest86+ output (default: stdin)",
+    )
+    parser.add_argument(
         "-o",
         "--oneline",
         action="store_true",
@@ -131,9 +138,17 @@ def main():
     )
     args = parser.parse_args()
 
-    # Read all input from standard input
-    input_text = sys.stdin.read()
+    # Read input text from file argument or standard input
+    input_text = args.file.read()
     pairs = parse_badram(input_text)
+
+    # Check if any valid address/mask pairs were extracted
+    if not pairs:
+        print(
+            "Error: No valid hexadecimal address/mask pairs found in input.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     all_pfns = set()
     for addr, mask in pairs:

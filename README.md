@@ -125,3 +125,4 @@ This project is open-source and available under the [MIT License](LICENSE).
 ## See also
 * https://memtest.org/readme#badram-patterns
 * [[tutorial] BadRAM 2025 update](https://forums.gentoo.org/viewtopic.php?t=1172918)
+* [Microsoft Learn > How to Manage the Predictive Failure Analysis (PFA) Memory List](https://learn.microsoft.com/en-us/windows-hardware/drivers/whea/how-to-manage-the-pfa-memory-list)

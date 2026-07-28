@@ -24,17 +24,14 @@ def parse_badram(text):
 
 def expand_pfns(addr, mask):
     """Calculate affected 4KB PFNs (Page Frame Numbers) from address and mask."""
-    # Shift right by 12 bits to target 4KB page granularity
     pfn_addr = addr >> 12
     pfn_mask = mask >> 12
 
-    # Identify zero-bit positions (wildcard bits) in the PFN mask (52 bits for 64-bit addresses)
     zero_bit_positions = [i for i in range(52) if not ((pfn_mask >> i) & 1)]
 
     pfns = set()
     num_zeros = len(zero_bit_positions)
 
-    # Safety check: Cap wildcard expansion if it produces too many pages (> 2^16 = 65,536 pages)
     if num_zeros > 16:
         print(
             f"Warning: Mask for address 0x{addr:x} expands to too many combinations. Capping to 16 bits.",
@@ -57,14 +54,12 @@ def expand_pfns(addr, mask):
 
 def merge_badram_entries(pfns):
     """Merge contiguous/pattern-matched PFN entries into minimal GRUB badram (addr, mask) pairs."""
-    # 4KB ページ単位 (マスク 0xfffffffffffff000) からスタート
     entries = set((pfn << 12, 0xFFFFFFFFFFFFF000) for pfn in pfns)
 
     while True:
         merged_any = False
         next_entries = set()
 
-        # マスクごとにグループ化して比較処理を高速化
         by_mask = {}
         for addr, mask in entries:
             by_mask.setdefault(mask, []).append(addr)
@@ -80,7 +75,6 @@ def merge_badram_entries(pfns):
                     if used[j]:
                         continue
                     diff = addrs[i] ^ addrs[j]
-                    # 差分が 1 ビットかつ、そのビットがマスク上で有効 (1) ならマージ可能
                     if diff != 0 and (diff & (diff - 1)) == 0 and (diff & mask) == diff:
                         new_addr = addrs[i] & ~diff
                         new_mask = mask & ~diff
@@ -99,6 +93,26 @@ def merge_badram_entries(pfns):
     return sorted(entries)
 
 
+def parse_memory_size(size_str):
+    """Parse size string like '128K', '64M', '16G' into bytes."""
+    m = re.match(r"^(\d+)\s*([kKmMgGtT]?[bB]?)$", size_str.strip())
+    if not m:
+        raise ValueError(f"Invalid memory size format: '{size_str}'")
+
+    val = int(m.group(1))
+    unit = m.group(2).upper()
+
+    if unit.startswith("K"):
+        return val * 1024
+    elif unit.startswith("M"):
+        return val * 1024**2
+    elif unit.startswith("G"):
+        return val * 1024**3
+    elif unit.startswith("T"):
+        return val * 1024**4
+    return val
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Convert Memtest86+ badram pattern to Windows badmemorylist or GRUB badram."
@@ -107,6 +121,12 @@ def main():
         "--grub",
         action="store_true",
         help="Output GRUB badram configuration and command",
+    )
+    parser.add_argument(
+        "-m",
+        "--memory",
+        type=str,
+        help="Total system memory size (e.g., 128K, 64M, 16G) to clip mask bits",
     )
     args = parser.parse_args()
 
@@ -133,14 +153,30 @@ def main():
     print("\n=== Windows bcdedit Command ===")
     print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
 
-    # Print GRUB configuration if --grub option is set
+    # Print GRUB command if --grub option is set
     if args.grub:
+        max_mask = None
+        if args.memory:
+            try:
+                mem_bytes = parse_memory_size(args.memory)
+                max_mask = mem_bytes - 1
+            except ValueError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+
         merged_entries = merge_badram_entries(sorted_pfns)
-        grub_pairs = [f"0x{addr:x},0x{mask:x}\n" for addr, mask in merged_entries]
+
+        grub_pairs = []
+        for addr, mask in merged_entries:
+            if max_mask is not None:
+                mask &= max_mask
+            grub_pairs.append(f"0x{addr:x},0x{mask:x}")
+
         grub_str = ",".join(grub_pairs)
 
         print("\n=== GRUB badram Command ===")
         print(f"badram {grub_str}")
+
 
 if __name__ == "__main__":
     main()

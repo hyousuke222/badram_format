@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import re
 import sys
 
@@ -55,6 +56,16 @@ def expand_pfns(addr, mask):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Convert Memtest86+ badram pattern to Windows badmemorylist or GRUB badram."
+    )
+    parser.add_argument(
+        "--grub",
+        action="store_true",
+        help="Output GRUB badram configuration and command",
+    )
+    args = parser.parse_args()
+
     # Read all input from standard input
     input_text = sys.stdin.read()
     pairs = parse_badram(input_text)
@@ -75,9 +86,18 @@ def main():
         print(" ".join(chunk))
 
     # Print Windows bcdedit command
-    print("=== Windows bcdedit Command ===")
+    print("\n=== Windows bcdedit Command ===")
     print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
-    print()
+
+    # Print GRUB configuration if --grub option is set
+    if args.grub:
+        # Each PFN (4KB page) corresponds to address `pfn << 12`
+        # and mask `0xfffffffffffff000` (matches exact 4KB page)
+        grub_pairs = [f"0x{pfn << 12:x},0xfffffffffffff000" for pfn in sorted_pfns]
+        grub_str = ",".join(grub_pairs)
+
+        print("\n=== GRUB badram Command ===")
+        print(f"badram {grub_str}")
 
 if __name__ == "__main__":
     main()

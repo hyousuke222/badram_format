@@ -115,18 +115,13 @@ def parse_memory_size(size_str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert Memtest86+ badram pattern to Windows badmemorylist or GRUB badram."
+        description="Convert Memtest86+ badram pattern to Windows badmemorylist and GRUB badram."
     )
     parser.add_argument(
         "-o",
         "--oneline",
         action="store_true",
         help="Output commands on a single line without backslashes",
-    )
-    parser.add_argument(
-        "--grub",
-        action="store_true",
-        help="Output GRUB badram configuration and command",
     )
     parser.add_argument(
         "-m",
@@ -164,32 +159,31 @@ def main():
     else:
         print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
 
-    # Print GRUB command if --grub option is set
-    if args.grub:
-        max_mask = None
-        if args.memory:
-            try:
-                mem_bytes = parse_memory_size(args.memory)
-                max_mask = mem_bytes - 1
-            except ValueError as e:
-                print(f"Error: {e}", file=sys.stderr)
-                sys.exit(1)
+    # Print GRUB command
+    max_mask = None
+    if args.memory:
+        try:
+            mem_bytes = parse_memory_size(args.memory)
+            max_mask = mem_bytes - 1
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
 
-        merged_entries = merge_badram_entries(sorted_pfns)
+    merged_entries = merge_badram_entries(sorted_pfns)
 
-        grub_pairs = []
-        for addr, mask in merged_entries:
-            if max_mask is not None:
-                mask &= max_mask
-            grub_pairs.append(f"0x{addr:x},0x{mask:x}")
+    grub_pairs = []
+    for addr, mask in merged_entries:
+        if max_mask is not None:
+            mask &= max_mask
+        grub_pairs.append(f"0x{addr:x},0x{mask:x}")
 
-        print("\n=== GRUB badram Command ===")
-        if not args.oneline and grub_pairs:
-            grub_str = ", \\\n".join(grub_pairs)
-            print(f"badram {grub_str}")
-        else:
-            grub_str = ",".join(grub_pairs)
-            print(f"badram {grub_str}")
+    print("\n=== GRUB badram Command ===")
+    if not args.oneline and grub_pairs:
+        grub_str = ", \\\n".join(grub_pairs)
+        print(f"badram {grub_str}")
+    else:
+        grub_str = ",".join(grub_pairs)
+        print(f"badram {grub_str}")
 
 
 if __name__ == "__main__":

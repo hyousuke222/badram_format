@@ -22,8 +22,19 @@ def parse_badram(text):
     return pairs
 
 
-def expand_pfns(addr, mask):
+def expand_pfns(addr, mask, mem_bytes=1 << 64):
     """Calculate affected 4KB PFNs (Page Frame Numbers) from address and mask."""
+    if addr > mem_bytes:
+        print(
+            f"Warning: Address 0x{addr:x} exceeds memory size.",
+            file=sys.stderr,
+        )
+    if (mask ^ 0xffffffffffffffff) > mem_bytes:
+        print(
+            f"Warning: Mask 0x{mask:x} exceeds memory size.",
+            file=sys.stderr,
+        )
+
     pfn_addr = addr >> 12
     pfn_mask = mask >> 12
 
@@ -150,9 +161,19 @@ def main():
         )
         sys.exit(1)
 
+    max_mask = None
+    mem_bytes = 1 << 64
+    if args.memory:
+        try:
+            mem_bytes = parse_memory_size(args.memory)
+            max_mask = mem_bytes - 1
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
     all_pfns = set()
     for addr, mask in pairs:
-        pfns = expand_pfns(addr, mask)
+        pfns = expand_pfns(addr, mask, mem_bytes)
         all_pfns.update(pfns)
 
     # Sort PFNs and format as hex strings
@@ -175,15 +196,6 @@ def main():
         print(f"bcdedit /set {{badmemory}} badmemorylist {' '.join(hex_pfns)}")
 
     # Print GRUB command
-    max_mask = None
-    if args.memory:
-        try:
-            mem_bytes = parse_memory_size(args.memory)
-            max_mask = mem_bytes - 1
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-
     merged_entries = merge_badram_entries(sorted_pfns)
 
     grub_pairs = []

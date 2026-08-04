@@ -18,6 +18,15 @@ def parse_badram(text):
     for i in range(0, len(tokens), 2):
         addr = int(tokens[i], 16)
         mask = int(tokens[i + 1], 16)
+
+        # Check if current address is smaller than the previous address
+        if pairs and addr < pairs[-1][0]:
+            print(
+                f"Error: Unexpected address 0x{addr:x} must be greater than previous 0x{pairs[-1][0]:x}.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
         pairs.append((addr, mask))
     return pairs
 
@@ -216,3 +225,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

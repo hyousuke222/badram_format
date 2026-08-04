@@ -206,7 +206,8 @@ def main():
 
     print("\n=== GRUB badram Command ===")
     if not args.oneline and grub_pairs:
-        grub_str = ", \\\n".join(grub_pairs)
+        chunks = [",".join(grub_pairs[i : i + 2]) for i in range(0, len(grub_pairs), 2)]
+        grub_str = ",\\\n".join(chunks)
         print(f"badram {grub_str}")
     else:
         grub_str = ",".join(grub_pairs)
